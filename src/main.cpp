@@ -1268,7 +1268,7 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const CBloc
 }
 
 unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockHeader *pblock) {
-    /* current difficulty formula, darkcoin - DarkGravity, written by Evan Duffield */
+    /* current difficulty formula, darkcoin - DarkGravityWave, written by Evan Duffield */
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
     const CBlockHeader *BlockCreating = pblock;
@@ -1313,10 +1313,10 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 
             int64 nActualTimespan = (CountBlocks*nTargetSpacing)/Shift;
             int64 nTargetTimespan = (CountBlocks*nTargetSpacing);
-            if (nActualTimespan < nTargetTimespan/2)
-                nActualTimespan = nTargetTimespan/2;
-            if (nActualTimespan > nTargetTimespan*2)
-                nActualTimespan = nTargetTimespan*2;
+            if (nActualTimespan < nTargetTimespan/1.5)
+                nActualTimespan = nTargetTimespan/1.5;
+            if (nActualTimespan > nTargetTimespan*1.5)
+                nActualTimespan = nTargetTimespan*1.5;
 
             // Retarget
             bnNew *= nActualTimespan;
