@@ -1268,8 +1268,8 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const CBloc
     return bnNew.GetCompact();
 }
 
-unsigned int static DarkGravity(const CBlockIndex* pindexLast, const CBlockHeader *pblock) {
-    /* current difficulty formula, darkcoin - DarkGravity */
+unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockHeader *pblock) {
+    /* current difficulty formula, darkcoin - DarkGravity, written by Evan Duffield - evan@darkcoin.io */
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
     const CBlockHeader *BlockCreating = pblock;
@@ -1279,11 +1279,11 @@ unsigned int static DarkGravity(const CBlockIndex* pindexLast, const CBlockHeade
     int64 nBlockTimeSum2 = 0;
     int64 nBlockTimeCount2 = 0;
     uint64 LastBlockTime = 0;
-    uint64 PastBlocksMin = 21;
+    uint64 PastBlocksMin = 14;
     uint64 PastBlocksMax = 140;
     uint64 CountBlocks = 0;
-    CBigNum PastDifficultyAverage;
-    CBigNum PastDifficultyAveragePrev;
+    unsigned int PastDifficultySum=0;
+    unsigned int PastDifficultyCount=0;
 
     if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || (uint64)BlockLastSolved->nHeight < PastBlocksMin) { return bnProofOfWorkLimit.GetCompact(); }
         
@@ -1293,16 +1293,16 @@ unsigned int static DarkGravity(const CBlockIndex* pindexLast, const CBlockHeade
 
         //printf("compare -- %"PRI64u" %"PRI64u" \n", CountBlocks, BlockReading->nHeight);
 
-        if(CountBlocks <= 14) {
-            if (CountBlocks == 1) { PastDifficultyAverage.SetCompact(BlockReading->nBits); }
-            else { PastDifficultyAverage = ((CBigNum().SetCompact(BlockReading->nBits) - PastDifficultyAveragePrev) / CountBlocks) + PastDifficultyAveragePrev; }
-            PastDifficultyAveragePrev = PastDifficultyAverage;
+        if(CountBlocks <= PastBlocksMin) {
+            PastDifficultySum += CBigNum().SetCompact(BlockReading->nBits).GetCompact();
+            PastDifficultyCount++;
+            printf("compare -- %"PRI64u" %f %f \n", CountBlocks, ConvertBitsToDouble(PastDifficultySum/PastDifficultyCount), ConvertBitsToDouble(BlockReading->nBits));
         }
 
         if(LastBlockTime > 0){
             int64 Diff = (LastBlockTime - BlockReading->GetBlockTime());
             if(Diff < 0) Diff = 0;
-            if(nBlockTimeCount <= 14) {
+            if(nBlockTimeCount <= PastBlocksMin) {
                 nBlockTimeCount++;
                 nBlockTimeSum += Diff;
             }
@@ -1315,7 +1315,8 @@ unsigned int static DarkGravity(const CBlockIndex* pindexLast, const CBlockHeade
         BlockReading = BlockReading->pprev;
     }
     
-    CBigNum bnNew(PastDifficultyAverage);
+    CBigNum bnNew;
+    bnNew.SetCompact(PastDifficultySum/PastDifficultyCount);
     if (nBlockTimeCount != 0 && nBlockTimeCount2 != 0) {
             //printf(" compare bts  btc  %"PRI64u", %"PRI64u"\n", nBlockTimeSum, nBlockTimeCount);
             //printf(" compare bts2 btc2 %"PRI64u", %"PRI64u"\n", nBlockTimeSum2, nBlockTimeCount2);
@@ -1348,8 +1349,6 @@ unsigned int static DarkGravity(const CBlockIndex* pindexLast, const CBlockHeade
         bnNew = bnProofOfWorkLimit;
         //printf("compare DarkGravity was over\n");
     }
-
-    //printf("compare DarkGravity---- %f\n", ConvertBitsToDouble(bnProofOfWorkLimit.GetCompact()));
      
     return bnNew.GetCompact();
 }
@@ -1379,13 +1378,13 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
         }
 
         //unsigned int kgw = GetNextWorkRequired_V2(pindexLast, pblock);
-        //unsigned int grav = DarkGravity(pindexLast, pblock);
+        //unsigned int grav = DarkGravityWave(pindexLast, pblock);
         //printf("compare %"PRI64u" mode %f, %f\n", pindexLast->nHeight, ConvertBitsToDouble(kgw), ConvertBitsToDouble(grav));
 
         if (DiffMode == 1) { return GetNextWorkRequired_V1(pindexLast, pblock); }
         else if (DiffMode == 2) { return GetNextWorkRequired_V2(pindexLast, pblock); }
-        else if (DiffMode == 3) { return DarkGravity(pindexLast, pblock); }
-        return DarkGravity(pindexLast, pblock);
+        else if (DiffMode == 3) { return DarkGravityWave(pindexLast, pblock); }
+        return DarkGravityWave(pindexLast, pblock);
 }
 
 
