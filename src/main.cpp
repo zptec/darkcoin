@@ -1274,15 +1274,15 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
     const CBlockIndex *BlockReading = pindexLast;
     const CBlockHeader *BlockCreating = pblock;
     BlockCreating = BlockCreating;
-    uint64 nBlockTimeAverage = 0;
-    uint64 nBlockTimeAveragePrev = 0;
-    uint64 nBlockTimeCount = 0;
-    uint64 nBlockTimeSum2 = 0;
-    uint64 nBlockTimeCount2 = 0;
-    uint64 LastBlockTime = 0;
-    uint64 PastBlocksMin = 14;
-    uint64 PastBlocksMax = 140;
-    uint64 CountBlocks = 0;
+    int64 nBlockTimeAverage = 0;
+    int64 nBlockTimeAveragePrev = 0;
+    int64 nBlockTimeCount = 0;
+    int64 nBlockTimeSum2 = 0;
+    int64 nBlockTimeCount2 = 0;
+    int64 LastBlockTime = 0;
+    int64 PastBlocksMin = 14;
+    int64 PastBlocksMax = 140;
+    int64 CountBlocks = 0;
     CBigNum PastDifficultyAverage;
     CBigNum PastDifficultyAveragePrev;
 
@@ -1310,6 +1310,7 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
                 if (nBlockTimeCount == 1) { nBlockTimeAverage = Diff; }
                 else { nBlockTimeAverage = ((Diff - nBlockTimeAveragePrev) / nBlockTimeCount) + nBlockTimeAveragePrev; }
                 nBlockTimeAveragePrev = nBlockTimeAverage;
+                //printf(" compare av dif  %"PRI64u", %"PRI64u"\n", nBlockTimeAverage, Diff);
             }
             nBlockTimeCount2++;
             nBlockTimeSum2 += Diff;
@@ -1322,7 +1323,7 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
     
     CBigNum bnNew(PastDifficultyAverage);
     if (nBlockTimeCount != 0 && nBlockTimeCount2 != 0) {
-            //printf(" compare bts  btc  %"PRI64u", %"PRI64u"\n", nBlockTimeSum, nBlockTimeCount);
+            //printf(" compare bts  btc  %"PRI64u", %"PRI64u"\n", nBlockTimeAverage, nBlockTimeCount);
             //printf(" compare bts2 btc2 %"PRI64u", %"PRI64u"\n", nBlockTimeSum2, nBlockTimeCount2);
 
             double SmartAverage = (((nBlockTimeAverage)*0.7)+((nBlockTimeSum2 / nBlockTimeCount2)*0.3));
