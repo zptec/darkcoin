@@ -1274,12 +1274,13 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
     const CBlockIndex *BlockReading = pindexLast;
     const CBlockHeader *BlockCreating = pblock;
     BlockCreating = BlockCreating;
-    int64 nBlockTimeSum = 0;
-    int64 nBlockTimeCount = 0;
-    int64 nBlockTimeSum2 = 0;
-    int64 nBlockTimeCount2 = 0;
+    uint64 nBlockTimeAverage = 0;
+    uint64 nBlockTimeAveragePrev = 0;
+    uint64 nBlockTimeCount = 0;
+    uint64 nBlockTimeSum2 = 0;
+    uint64 nBlockTimeCount2 = 0;
     uint64 LastBlockTime = 0;
-    uint64 PastBlocksMin = 7;
+    uint64 PastBlocksMin = 14;
     uint64 PastBlocksMax = 140;
     uint64 CountBlocks = 0;
     CBigNum PastDifficultyAverage;
@@ -1296,7 +1297,6 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
         if(CountBlocks <= PastBlocksMin) {
             if (CountBlocks == 1) { PastDifficultyAverage.SetCompact(BlockReading->nBits); }
             else { PastDifficultyAverage = ((CBigNum().SetCompact(BlockReading->nBits) - PastDifficultyAveragePrev) / CountBlocks) + PastDifficultyAveragePrev; }
-
             PastDifficultyAveragePrev = PastDifficultyAverage;
             //printf("compare -- %"PRI64u" %f %f \n", CountBlocks, ConvertBitsToDouble(PastDifficultyAverage.GetCompact()), ConvertBitsToDouble(BlockReading->nBits));
         }
@@ -1306,7 +1306,10 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
             if(Diff < 0) Diff = 0;
             if(nBlockTimeCount <= PastBlocksMin) {
                 nBlockTimeCount++;
-                nBlockTimeSum += Diff;
+
+                if (nBlockTimeCount == 1) { nBlockTimeAverage = Diff; }
+                else { nBlockTimeAverage = ((Diff - nBlockTimeAveragePrev) / nBlockTimeCount) + nBlockTimeAveragePrev; }
+                nBlockTimeAveragePrev = nBlockTimeAverage;
             }
             nBlockTimeCount2++;
             nBlockTimeSum2 += Diff;
@@ -1322,7 +1325,7 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
             //printf(" compare bts  btc  %"PRI64u", %"PRI64u"\n", nBlockTimeSum, nBlockTimeCount);
             //printf(" compare bts2 btc2 %"PRI64u", %"PRI64u"\n", nBlockTimeSum2, nBlockTimeCount2);
 
-            double SmartAverage = (((nBlockTimeSum / nBlockTimeCount)*0.8)+((nBlockTimeSum2 / nBlockTimeCount2)*0.2));
+            double SmartAverage = (((nBlockTimeAverage)*0.7)+((nBlockTimeSum2 / nBlockTimeCount2)*0.3));
             if(SmartAverage < 1) SmartAverage = 1;
             double Shift = nTargetSpacing/SmartAverage;
 
