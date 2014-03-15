@@ -1279,11 +1279,11 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
     int64 nBlockTimeSum2 = 0;
     int64 nBlockTimeCount2 = 0;
     uint64 LastBlockTime = 0;
-    uint64 PastBlocksMin = 14;
+    uint64 PastBlocksMin = 7;
     uint64 PastBlocksMax = 140;
     uint64 CountBlocks = 0;
-    unsigned int PastDifficultySum=0;
-    unsigned int PastDifficultyCount=0;
+    CBigNum PastDifficultyAverage;
+    CBigNum PastDifficultyAveragePrev;
 
     if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || (uint64)BlockLastSolved->nHeight < PastBlocksMin) { return bnProofOfWorkLimit.GetCompact(); }
         
@@ -1294,9 +1294,11 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
         //printf("compare -- %"PRI64u" %"PRI64u" \n", CountBlocks, BlockReading->nHeight);
 
         if(CountBlocks <= PastBlocksMin) {
-            PastDifficultySum += CBigNum().SetCompact(BlockReading->nBits).GetCompact();
-            PastDifficultyCount++;
-            printf("compare -- %"PRI64u" %f %f \n", CountBlocks, ConvertBitsToDouble(PastDifficultySum/PastDifficultyCount), ConvertBitsToDouble(BlockReading->nBits));
+            if (CountBlocks == 1) { PastDifficultyAverage.SetCompact(BlockReading->nBits); }
+            else { PastDifficultyAverage = ((CBigNum().SetCompact(BlockReading->nBits) - PastDifficultyAveragePrev) / CountBlocks) + PastDifficultyAveragePrev; }
+
+            PastDifficultyAveragePrev = PastDifficultyAverage;
+            //printf("compare -- %"PRI64u" %f %f \n", CountBlocks, ConvertBitsToDouble(PastDifficultyAverage.GetCompact()), ConvertBitsToDouble(BlockReading->nBits));
         }
 
         if(LastBlockTime > 0){
@@ -1315,13 +1317,12 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
         BlockReading = BlockReading->pprev;
     }
     
-    CBigNum bnNew;
-    bnNew.SetCompact(PastDifficultySum/PastDifficultyCount);
+    CBigNum bnNew(PastDifficultyAverage);
     if (nBlockTimeCount != 0 && nBlockTimeCount2 != 0) {
             //printf(" compare bts  btc  %"PRI64u", %"PRI64u"\n", nBlockTimeSum, nBlockTimeCount);
             //printf(" compare bts2 btc2 %"PRI64u", %"PRI64u"\n", nBlockTimeSum2, nBlockTimeCount2);
 
-            double SmartAverage = (((nBlockTimeSum / nBlockTimeCount)*0.7)+((nBlockTimeSum2 / nBlockTimeCount2)*0.3));
+            double SmartAverage = (((nBlockTimeSum / nBlockTimeCount)*0.8)+((nBlockTimeSum2 / nBlockTimeCount2)*0.2));
             if(SmartAverage < 1) SmartAverage = 1;
             double Shift = nTargetSpacing/SmartAverage;
 
@@ -1349,6 +1350,8 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
         bnNew = bnProofOfWorkLimit;
         //printf("compare DarkGravity was over\n");
     }
+
+    //printf("compare DarkGravity---- %f\n", ConvertBitsToDouble(bnProofOfWorkLimit.GetCompact()));
      
     return bnNew.GetCompact();
 }
@@ -1373,7 +1376,7 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
                 if (pindexLast->nHeight+1 >= 5) { DiffMode = 3; }
         }
         else {
-                if (pindexLast->nHeight+1 >= 35500) { DiffMode = 3; }
+                if (pindexLast->nHeight+1 >= 34111) { DiffMode = 3; }
                 else if (pindexLast->nHeight+1 >= 15200) { DiffMode = 2; }
         }
 
@@ -4626,8 +4629,6 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         nLastBlockSize = nBlockSize;
         printf("CreateNewBlock(): total size %"PRI64u"\n", nBlockSize);
 
-        float dDiff =
-                (float)0x0000ffff / (float)(pindexPrev->nBits & 0x00ffffff);
         pblock->vtx[0].vout[0].nValue = GetBlockValue(pindexPrev->nBits, pindexPrev->nHeight, nFees);
 
         pblocktemplate->vTxFees[0] = -nFees;
