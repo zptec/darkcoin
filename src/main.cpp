@@ -102,6 +102,23 @@ int64 nMinimumInputValue = DUST_HARD_LIMIT;
 
 // These functions dispatch to one or all registered wallets
 
+bool CDarkSendSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey){
+    CScript payee2;
+    payee2.SetDestination(pubkey.GetID());
+
+    CTransaction txVin;
+    uint256 hash;
+    if(GetTransaction(vin.prevout.hash, txVin, hash, true)){
+        BOOST_FOREACH(CTxOut out, txVin.vout){
+            if(out.nValue == 1000*COIN){
+                if(out.scriptPubKey == payee2) return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 
 void RegisterWallet(CWallet* pwalletIn)
 {
@@ -4008,6 +4025,12 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         if(!darkSendSigner.VerifyMessage(pubkey, vchSig, strMessage, errorMessage)){
             LogPrintf("dsee - Got bad masternode address signature\n");
             pfrom->Misbehaving(100);
+            return false;
+        }
+
+
+        if(!darkSendSigner.IsVinAssociatedWithPubkey(vin, pubkey)) {
+            LogPrintf("dsee - Got mismatched pubkey and vin\n");
             return false;
         }
 
