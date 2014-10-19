@@ -1047,6 +1047,7 @@ bool CDarkSendPool::RegisterAsMasterNodeRemoteOnly(std::string strMasterNodeAddr
     CKey key2;
     CPubKey pubkey2;
 
+
     if(!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, key2, pubkey2))
     {
         printf("     - Invalid masternodeprivkey: '%s'\n", errorMessage.c_str());
@@ -1054,6 +1055,12 @@ bool CDarkSendPool::RegisterAsMasterNodeRemoteOnly(std::string strMasterNodeAddr
     }
 
     CService masterNodeSignAddr = CService(strMasterNodeAddr);
+    BOOST_FOREACH(CMasterNode& mn, darkSendMasterNodes){
+        if(mn.addr == masterNodeSignAddr){
+            printf("     - Address in use");
+            return false;
+        }
+    }
 
     if((fTestNet && masterNodeSignAddr.GetPort() != 19999) || (!fTestNet && masterNodeSignAddr.GetPort() != 9999)) {
         printf("     - Invalid port");
