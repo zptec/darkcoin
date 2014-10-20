@@ -1291,7 +1291,7 @@ int CDarkSendPool::GetCurrentMasterNode(int mod, int64 nBlockHeight)
         // determine the winner
         if(n2 > score){
             score = n2;
-            winner = i;
+            winner = i; 
         }
         i++;
     }
@@ -1370,7 +1370,7 @@ bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee)
                 }
             }
 
-            return true;
+            return false;
         }
     }
 
