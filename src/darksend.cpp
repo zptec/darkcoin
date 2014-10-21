@@ -2208,7 +2208,7 @@ void ThreadCheckDarkSendPool()
             while(it != darkSendMasterNodes.end()){
                 (*it).Check();
                 if((*it).enabled == 4 || (*it).enabled == 3){
-                    printf("Removing inactive masternode %s\n", (*it).addr.ToString().c_str());
+                    LogPrintf("Removing inactive masternode %s\n", (*it).addr.ToString().c_str());
                     it = darkSendMasterNodes.erase(it);
                 } else {
                     ++it;
