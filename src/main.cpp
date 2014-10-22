@@ -2581,30 +2581,39 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
     {
         LOCK2(cs_main, mempool.cs);
 
-        int64 masternodePaymentAmount = GetMasternodePayment(pindexBest->nHeight+1, vtx[0].GetValueOut());        
-        bool fIsInitialDownload = IsInitialBlockDownload();
+        if(pindexBest->GetBlockHash() == hashPrevBlock){
+            int64 masternodePaymentAmount = GetMasternodePayment(pindexBest->nHeight+1, vtx[0].GetValueOut());
+            bool fIsInitialDownload = IsInitialBlockDownload();
+        
+            // If we don't already have its previous block, skip masternode payment step
+            if (!fIsInitialDownload && pindexBest != NULL)
+            {
+                bool foundPaymentAmount = false;
+                bool foundPayee = false;
 
-        if (!fIsInitialDownload && pindexBest != NULL)
-        {
-            bool foundPaymentAmount = false;
-            bool foundPayee = false;
+                CScript payee;
+                if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee) || payee == CScript()){
+                    foundPayee = true; //doesn't require a specific payee
+                }
 
-            CScript payee;
-            if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee)){
-                foundPayee = true; //doesn't require a specific payee
+                for (unsigned int i = 0; i < vtx[0].vout.size(); i++) {
+                    if(vtx[0].vout[i].nValue == masternodePaymentAmount )
+                        foundPaymentAmount = true;
+                    if(vtx[0].vout[i].scriptPubKey == payee )
+                        foundPayee = true;
+                }
+
+                if(!foundPaymentAmount || !foundPayee) {
+                    CTxDestination address1;
+                    ExtractDestination(payee, address1);
+                    CBitcoinAddress address2(address1);
+
+                    LogPrintf("CheckBlock() : Couldn't find masternode payment(%d|%"PRI64u") or payee(%d|%s) nHeight %d. \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str(), pindexBest->nHeight+1);
+                    if(EnforceMasternodePayments) return state.DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
+                }
             }
-
-            for (unsigned int i = 0; i < vtx[0].vout.size(); i++) {
-                if(vtx[0].vout[i].nValue == masternodePaymentAmount )
-                    foundPaymentAmount = true;
-                if(vtx[0].vout[i].scriptPubKey == payee )
-                    foundPayee = true;
-            }
-
-            if(!foundPaymentAmount || !foundPayee ) {
-                LogPrintf("CheckBlock() : Couldn't find masternode payment(%d) or payee(%d). \n", foundPaymentAmount, foundPayee);
-                if(EnforceMasternodePayments) return state.DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
-            }
+        } else {
+            LogPrintf("CheckBlock() : Skipping masternode payment check - nHeight %d Hash %s\n", pindexBest->nHeight+1, GetHash().ToString().c_str());
         }
     }
 
@@ -4320,8 +4329,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             if(mn.vin.prevout == vin.prevout) {
                 if(!mn.UpdatedWithin(MASTERNODE_MIN_SECONDS)){
                     mn.UpdateLastSeen();
-
-                    if(mn.now < sigTime){
+                    if(mn.now < sigTime){ //take the newest entry
                         LogPrintf("dsee - Got updated entry for %s\n", addr.ToString().c_str());
                         mn.pubkey2 = pubkey2;
                         mn.now = sigTime;
@@ -4408,12 +4416,13 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             return false;
         }
 
-        if (sigTime <= GetAdjustedTime() - 60 * 60) {
-            LogPrintf("dseep: Signature rejected, too far into the past %s\n", vin.ToString().c_str());
+/*        if (sigTime <= GetAdjustedTime() - 60 * 60) {
+            // this is spamming the logs, disabled for now
+            //LogPrintf("dseep: Signature rejected, too far into the past %s\n", vin.ToString().c_str());
             //pfrom->Misbehaving(20);
             return false;
         }
-
+*/
         //LogPrintf("Searching existing masternodes : %s - %s\n", addr.ToString().c_str(),  vin.ToString().c_str());
 
         BOOST_FOREACH(CMasterNode& mn, darkSendMasterNodes) {
@@ -4863,7 +4872,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
     {
         CSyncCheckpoint checkpoint;
         vRecv >> checkpoint;
-
 
         if (checkpoint.ProcessSyncCheckpoint(pfrom))
         {
