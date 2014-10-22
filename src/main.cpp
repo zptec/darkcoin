@@ -4321,10 +4321,10 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 if(!mn.UpdatedWithin(MASTERNODE_MIN_SECONDS)){
                     mn.UpdateLastSeen();
 
-                    if(mn.vin.now < sigTime){
+                    if(mn.now < sigTime){
                         printf("dsee - Got updated entry for %s\n", addr.ToString().c_str());
                         mn.pubkey2 = pubkey2;
-                        mn.now = sigTime
+                        mn.now = sigTime;
                         mn.sig = vchSig;
                     }
 
