@@ -1226,7 +1226,11 @@ bool AppInit2(boost::thread_group& threadGroup)
     fEnableDarksend = GetBoolArg("-enabledarksend", false);
 
     nDarksendRounds = GetArg("-darksendrounds", 2);
-    if(nDarksendRounds > 8) nDarksendRounds = 8;
+    if(nDarksendRounds > 99999) nDarksendRounds = 99999;
+    if(nDarksendRounds < 1) nDarksendRounds = 1;
+
+    nDarksendBlocksBetweenSuccesses = GetArg("-darksend_blocks_between_successes", 1);
+    if(nDarksendRounds > 99999) nDarksendRounds = 99999;
     if(nDarksendRounds < 1) nDarksendRounds = 1;
 
     nAnonymizeDarkcoinAmount = GetArg("-anonymizedarkcoinamount", 0);

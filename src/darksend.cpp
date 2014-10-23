@@ -1522,8 +1522,8 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
     if(fMasterNode) return false;
     if(state == POOL_STATUS_ERROR || state == POOL_STATUS_SUCCESS) return false;
 
-    if(nBestHeight == cachedLastSuccess) {
-        LogPrintf("CDarkSendPool::DoAutomaticDenominating - Last successful ds+ was too recent\n");
+    if(nBestHeight-cachedLastSuccess < nDarksendBlocksBetweenSuccesses) {
+        LogPrintf("CDarkSendPool::DoAutomaticDenominating - Last successful darksend was too recent\n");
         return false;
     }
     if(!fEnableDarksend) {
@@ -1731,7 +1731,7 @@ bool CDarkSendPool::SplitUpMoney(bool justCollateral)
 
     LogPrintf("DoAutomaticDenominating: Split up large input (justCollateral %d):\n", justCollateral);
     LogPrintf(" -- nTotalBalance %"PRI64d"\n", nTotalBalance);
-    LogPrintf(" -- denom %"PRI64d" \n", pwalletMain->GetDenominatedBalance(false));
+    LogPrintf(" -- non-denom %"PRI64d" \n", pwalletMain->GetDenominatedBalance(false));
 
     // make our change address
     CReserveKey reservekey(pwalletMain);
@@ -1752,10 +1752,11 @@ bool CDarkSendPool::SplitUpMoney(bool justCollateral)
     vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL*5)+DARKSEND_FEE));
     nTotalOut += (DARKSEND_COLLATERAL*5)+DARKSEND_FEE; 
 
-    for(int d = 0; d <= 4+nDarksendRounds; d++){
+    for(int d = 0; d <= std::min(4+nDarksendRounds,20); d++){
         vecSend.push_back(make_pair(scriptChange, DARKSEND_FEE));
         nTotalOut += DARKSEND_FEE;
     }
+
 
     // ****** Add outputs in bases of two from 1 darkcoin *** /
     if(!justCollateral){
@@ -1763,7 +1764,7 @@ bool CDarkSendPool::SplitUpMoney(bool justCollateral)
 
         while(continuing){
             if(nTotalOut + a < nTotalBalance-DARKSEND_FEE){
-                //LogPrintf(" nTotalOut %"PRI64d", added %"PRI64d"\n", nTotalOut, a);
+                LogPrintf("SplitUpMoney: nTotalOut %"PRI64d", added %"PRI64d"\n", nTotalOut, a);
 
                 vecSend.push_back(make_pair(scriptChange, a));
                 nTotalOut += a;
@@ -1774,6 +1775,8 @@ bool CDarkSendPool::SplitUpMoney(bool justCollateral)
             a = a * 2;
         }
     }
+
+    LogPrintf(" -- nTotalOut %"PRI64d" \n", nTotalOut);
 
     if((justCollateral && nTotalOut <= 0.1*COIN) || vecSend.size() < 3) {
         LogPrintf("SplitUpMoney: Not enough outputs to make a transaction\n");
