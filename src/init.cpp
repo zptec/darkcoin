@@ -390,6 +390,7 @@ std::string HelpMessage()
         "  -enabledaemondarksend=<n>      "   + _("Darksend is not usually enabled in daemon mode (0-1, default: 1)") + "\n" +
         "  -darksendrounds=<n>      "   + _("Use N separate masternodes to anonymize funds  (2-8, default: 2)") + "\n" +
         "  -anonymizedarkcoinamount=<n>      "   + _("Keep N darkcoin anonymized (default: 0)") + "\n" +
+        "  -liquidityprovider=<n>      "   + _("Provide liquidity to Darksend by infrequently mixing coins on a continual basis (0-100, default: 0, 1=very frequent, high fees, 100=very infrequent, low fees)") + "\n" +
 
         "\n" + _("Block creation options:") + "\n" +
         "  -blockminsize=<n>      "   + _("Set minimum block size in bytes (default: 0)") + "\n" +
@@ -1229,9 +1230,12 @@ bool AppInit2(boost::thread_group& threadGroup)
     if(nDarksendRounds > 99999) nDarksendRounds = 99999;
     if(nDarksendRounds < 1) nDarksendRounds = 1;
 
-    nDarksendBlocksBetweenSuccesses = GetArg("-darksend_blocks_between_successes", 1);
-    if(nDarksendRounds > 99999) nDarksendRounds = 99999;
-    if(nDarksendRounds < 1) nDarksendRounds = 1;
+    nLiquidityProvider = GetArg("-liquidityprovider", 0); //1-100
+    if(nLiquidityProvider != 0) {
+        darkSendPool.SetMinBlockSpacing(std::min(nLiquidityProvider,100)*15);
+        fEnableDarksend = true;
+        nDarksendRounds = 99999;
+    }
 
     nAnonymizeDarkcoinAmount = GetArg("-anonymizedarkcoinamount", 0);
     if(nAnonymizeDarkcoinAmount > 999999) nAnonymizeDarkcoinAmount = 999999;

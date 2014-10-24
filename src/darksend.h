@@ -372,6 +372,7 @@ public:
     int splitUpInARow; // how many splits we've done since a success?
     int cachedLastSuccess;
     int cachedNumBlocks; //used for the overview screen
+    int minBlockSpacing; //required blocks between mixes
 
     CTransaction txCollateral; //collateral tx used during process
 
@@ -395,9 +396,14 @@ public:
         unitTest = false;
         splitUpInARow = 0;
         txCollateral = CTransaction();
+        minBlockSpacing = 1;
 
         SetCollateralAddress(strAddress);
         SetNull();
+    }
+
+    void SetMinBlockSpacing(int minBlockSpacingIn){
+        minBlockSpacing = minBlockSpacingIn;
     }
 
     bool SetCollateralAddress(std::string strAddress);
@@ -538,6 +544,8 @@ public:
     int GetInputDarksendRounds(CTxIn in, int rounds=0);
     // split up large inputs or make fee sized inputs
     bool SplitUpMoney(bool justCollateral=false);
+    // used for liquidity providers
+    bool SendRandomPaymentToSelf();
     // get the denominations for a list of outputs (returns a bitshifted integer)
     int GetDenominations(const std::vector<CTxOut>& vout);
     // get the denominations for a specific amount of darkcoin. 

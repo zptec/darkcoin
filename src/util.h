@@ -131,7 +131,7 @@ extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
 extern bool fMasterNode;
 extern int nDarksendRounds;
-extern int nDarksendBlocksBetweenSuccesses;
+extern int nLiquidityProvider;
 extern int nAnonymizeDarkcoinAmount;
 extern bool fEnableDarksend;
 extern int64 enforceMasternodePaymentsTime;

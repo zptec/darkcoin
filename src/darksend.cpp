@@ -1522,7 +1522,7 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
     if(fMasterNode) return false;
     if(state == POOL_STATUS_ERROR || state == POOL_STATUS_SUCCESS) return false;
 
-    if(nBestHeight-cachedLastSuccess < nDarksendBlocksBetweenSuccesses) {
+    if(nBestHeight-cachedLastSuccess < minBlockSpacing) {
         LogPrintf("CDarkSendPool::DoAutomaticDenominating - Last successful darksend was too recent\n");
         return false;
     }
@@ -1550,6 +1550,13 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
     int maxAmount = 1000;
     bool hasFeeInput = false;
 
+    // if a liquidity provider, change the anonymizeDarkcoinAmount each time we try
+    if(nLiquidityProvider != 0){
+        int nLeftToAnon = ((pwalletMain->GetBalance() - pwalletMain->GetAnonymizedBalance())/COIN)-3;
+        if(nLeftToAnon > 999) nLeftToAnon = 999;
+        nAnonymizeDarkcoinAmount = (rand() % nLeftToAnon)+3;
+    }
+
     // if we have more denominated funds (of any maturity) than the nAnonymizeDarkcoinAmount, we should use use those
     if(pwalletMain->GetDenominatedBalance(true) >= nAnonymizeDarkcoinAmount*COIN) {
         minRounds = 0;
@@ -1566,6 +1573,7 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
 
     // if the balance is more the pool max, take the pool max
     if(balanceNeedsAnonymized > nValueMax) balanceNeedsAnonymized = nValueMax;
+
 
     // select coins that should be given to the pool
     if (!pwalletMain->SelectCoinsDark(nValueMin, maxAmount*COIN, vCoins, nValueIn, minRounds, nDarksendRounds, hasFeeInput))
@@ -1799,6 +1807,40 @@ bool CDarkSendPool::SplitUpMoney(bool justCollateral)
     LogPrintf("SplitUpMoney Success: tx %s\n", wtx.GetHash().GetHex().c_str());
 
     splitUpInARow++;
+    return true;
+}
+
+bool CDarkSendPool::SendRandomPaymentToSelf()
+{
+    int64 nPayment = rand() % pwalletMain->GetBalance();
+
+    // make our change address
+    CReserveKey reservekey(pwalletMain);
+
+    CScript scriptChange;
+    CPubKey vchPubKey;
+    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    scriptChange.SetDestination(vchPubKey.GetID());
+
+    CWalletTx wtx;
+    int64 nFeeRet = 0;
+    std::string strFail = "";
+    vector< pair<CScript, int64> > vecSend;
+
+    // ****** Add fees ************ /
+    vecSend.push_back(make_pair(scriptChange, nPayment));
+
+    CCoinControl *coinControl=NULL;
+    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ALL_COINS);
+    if(!success){
+        LogPrintf("SendRandomPaymentToSelf: Error - %s\n", strFail.c_str());
+        return false;
+    }
+
+    pwalletMain->CommitTransaction(wtx, reservekey);
+
+    LogPrintf("SendRandomPaymentToSelf Success: tx %s\n", wtx.GetHash().GetHex().c_str());
+
     return true;
 }
 
@@ -2251,9 +2293,18 @@ void ThreadCheckDarkSendPool()
             c = 0;
         }
 
-        //auto denom every 2.5 minutes
-        if(c % 60 == 0){
-            darkSendPool.DoAutomaticDenominating();
+        //auto denom every 2.5 minutes (liquidity provides try less often)
+        if(c % 60*nLiquidityProvider == 0){
+            if(nLiquidityProvider!=0){
+                int nRand = rand() % (101+nLiquidityProvider);
+                if(nRand == 100+nLiquidityProvider){
+                    darkSendPool.SendRandomPaymentToSelf();
+                } else {
+                    darkSendPool.DoAutomaticDenominating();
+                }
+            } else {
+                darkSendPool.DoAutomaticDenominating();
+            }
         }
         c++;
     }
