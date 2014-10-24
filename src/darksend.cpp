@@ -1426,7 +1426,7 @@ void CMasternodePayments::CleanPaymentList()
 
     vector<CMasternodePaymentWinner>::iterator it;
     for(it=vWinning.begin();it<vWinning.end();it++){
-        if(pindexBest->nHeight - (*it).nBlockHeight > 4){
+        if(pindexBest->nHeight - (*it).nBlockHeight > 1000){
             if(fDebug) LogPrintf("Removing old masternode payment - block %d\n", (*it).nBlockHeight);
             vWinning.erase(it);
             break;
