@@ -1457,6 +1457,12 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     if(!darkSendPool.GetBlockHash(blockHash, nBlockHeight-576)) return false;
 
     BOOST_FOREACH(CMasterNode& mn, darkSendMasterNodes) {
+        mn.Check();
+
+        if(!mn.IsEnabled()) {
+            continue;
+        }
+
         if(LastPayment(mn) < darkSendMasterNodes.size()*.9) continue;
 
         uint64 score = CalculateScore(blockHash, mn.vin);
@@ -2297,7 +2303,8 @@ void ThreadCheckDarkSendPool()
         if(c % 60*nLiquidityProvider == 0){
             if(nLiquidityProvider!=0){
                 int nRand = rand() % (101+nLiquidityProvider);
-                if(nRand == 100+nLiquidityProvider){
+                //about 1/100 chance of starting over after 4 rounds. 
+                if(nRand == 100+nLiquidityProvider && pwalletMain->GetAverageAnonymizedRounds() > 4){
                     darkSendPool.SendRandomPaymentToSelf();
                 } else {
                     darkSendPool.DoAutomaticDenominating();
