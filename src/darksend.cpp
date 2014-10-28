@@ -1556,13 +1556,6 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
     int maxAmount = 1000;
     bool hasFeeInput = false;
 
-    // if a liquidity provider, change the anonymizeDarkcoinAmount each time we try
-    if(nLiquidityProvider != 0){
-        int nLeftToAnon = ((pwalletMain->GetBalance() - pwalletMain->GetAnonymizedBalance())/COIN)-3;
-        if(nLeftToAnon > 999) nLeftToAnon = 999;
-        nAnonymizeDarkcoinAmount = (rand() % nLeftToAnon)+3;
-    }
-
     // if we have more denominated funds (of any maturity) than the nAnonymizeDarkcoinAmount, we should use use those
     if(pwalletMain->GetDenominatedBalance(true) >= nAnonymizeDarkcoinAmount*COIN) {
         minRounds = 0;
@@ -1818,7 +1811,10 @@ bool CDarkSendPool::SplitUpMoney(bool justCollateral)
 
 bool CDarkSendPool::SendRandomPaymentToSelf()
 {
-    int64 nPayment = rand() % pwalletMain->GetBalance();
+    int64 nBalance = pwalletMain->GetBalance();
+    int64 nPayment = (nBalance*0.35) + (rand() % nBalance);
+
+    if(nPayment > nBalance) nPayment = nBalance-(0.1*COIN);
 
     // make our change address
     CReserveKey reservekey(pwalletMain);
@@ -1837,7 +1833,7 @@ bool CDarkSendPool::SendRandomPaymentToSelf()
     vecSend.push_back(make_pair(scriptChange, nPayment));
 
     CCoinControl *coinControl=NULL;
-    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ALL_COINS);
+    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ONLY_DENOMINATED);
     if(!success){
         LogPrintf("SendRandomPaymentToSelf: Error - %s\n", strFail.c_str());
         return false;
@@ -2298,14 +2294,17 @@ void ThreadCheckDarkSendPool()
             darkSendPool.RegisterAsMasterNode(false);
             c = 0;
         }
-
+        
         //auto denom every 2.5 minutes (liquidity provides try less often)
         if(c % 60*nLiquidityProvider == 0){
             if(nLiquidityProvider!=0){
                 int nRand = rand() % (101+nLiquidityProvider);
                 //about 1/100 chance of starting over after 4 rounds. 
-                if(nRand == 100+nLiquidityProvider && pwalletMain->GetAverageAnonymizedRounds() > 4){
+                if(nRand == 50+nLiquidityProvider && pwalletMain->GetAverageAnonymizedRounds() > 8){
                     darkSendPool.SendRandomPaymentToSelf();
+                    int nLeftToAnon = ((pwalletMain->GetBalance() - pwalletMain->GetAnonymizedBalance())/COIN)-3;
+                    if(nLeftToAnon > 999) nLeftToAnon = 999;
+                    nAnonymizeDarkcoinAmount = (rand() % nLeftToAnon)+3;
                 } else {
                     darkSendPool.DoAutomaticDenominating();
                 }
