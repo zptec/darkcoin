@@ -2601,8 +2601,12 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
                     foundPayee = true;
             }
 
-            if(!foundPaymentAmount || !foundPayee ) {
-                LogPrintf("CheckBlock() : Couldn't find masternode payment(%d) or payee(%d). \n", foundPaymentAmount, foundPayee);
+            if(!foundPaymentAmount || !foundPayee) {
+                CTxDestination address1;
+                ExtractDestination(payee, address1);
+                CBitcoinAddress address2(address1);
+
+                LogPrintf("CheckBlock() : Couldn't find masternode payment(%d|%"PRI64u") or payee(%d|%s). \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str());
                 if(EnforceMasternodePayments) return state.DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
             }
         }
