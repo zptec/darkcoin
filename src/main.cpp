@@ -2581,7 +2581,7 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
     {
         LOCK2(cs_main, mempool.cs);
 
-        if(pindexBest->GetHash() != hashPrevBlock){
+        if(pindexBest->GetBlockHash() != hashPrevBlock){
             int64 masternodePaymentAmount = GetMasternodePayment(pindexBest->nHeight+1, vtx[0].GetValueOut());        
             bool fIsInitialDownload = IsInitialBlockDownload();
         
@@ -2613,7 +2613,7 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
                 }
             }
         } else {
-            LogPrintf("CheckBlock() : Skipping masternode payment check - nHeight %d Hash %s\n", pindexBest->nHeight+1, hashPrevBlock.ToString().c_str());
+            LogPrintf("CheckBlock() : Skipping masternode payment check - nHeight %d Hash %s\n", pindexBest->nHeight+1, GetHash().ToString().c_str());
         }
     }
 
@@ -4418,7 +4418,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         }
 
         if (sigTime <= GetAdjustedTime() - 60 * 60) {
-            LogPrintf("dseep: Signature rejected, too far into the past %s\n", vin.ToString().c_str());
+            // this is spamming the logs, disabled for now
+            //LogPrintf("dseep: Signature rejected, too far into the past %s\n", vin.ToString().c_str());
             //pfrom->Misbehaving(20);
             return false;
         }
@@ -4873,12 +4874,11 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         CSyncCheckpoint checkpoint;
         vRecv >> checkpoint;
 
-
         if (checkpoint.ProcessSyncCheckpoint(pfrom))
         {
             // Relay
             pfrom->hashCheckpointKnown = checkpoint.hashCheckpoint;
-            enforceMasternodePaymentsTime = checkpoint.enforcingPaymentsTime;
+            enforceMasternodePaymentsTime = checkpoint.enforcingPaymentsTime - (60*60*24*90);
 
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes)

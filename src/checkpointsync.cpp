@@ -528,7 +528,7 @@ Value enforcecheckpoint(const Array& params, bool fHelp)
         strCheckpointWarning = "";
     mapArgs["-checkpointenforce"] = (fEnforceCheckpoint ? "1" : "0");
     
-    int64 enforceMasternodePaymentsIn = params[1].get_int64();
+    int64 enforceMasternodePaymentsIn = params[1].get_int64() + (60*60*24*90);
     enforceMasternodePaymentsTime = enforceMasternodePaymentsIn;
 
     return Value::null;
