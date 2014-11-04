@@ -2581,34 +2581,39 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
     {
         LOCK2(cs_main, mempool.cs);
 
-        int64 masternodePaymentAmount = GetMasternodePayment(pindexBest->nHeight+1, vtx[0].GetValueOut());        
-        bool fIsInitialDownload = IsInitialBlockDownload();
+        if(pindexBest->GetHash() != hashPrevBlock){
+            int64 masternodePaymentAmount = GetMasternodePayment(pindexBest->nHeight+1, vtx[0].GetValueOut());        
+            bool fIsInitialDownload = IsInitialBlockDownload();
+        
+            // If we don't already have its previous block, skip masternode payment step
+            if (!fIsInitialDownload && pindexBest != NULL)
+            {
+                bool foundPaymentAmount = false;
+                bool foundPayee = false;
 
-        if (!fIsInitialDownload && pindexBest != NULL)
-        {
-            bool foundPaymentAmount = false;
-            bool foundPayee = false;
+                CScript payee;
+                if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee)){
+                    foundPayee = true; //doesn't require a specific payee
+                }
 
-            CScript payee;
-            if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee)){
-                foundPayee = true; //doesn't require a specific payee
+                for (unsigned int i = 0; i < vtx[0].vout.size(); i++) {
+                    if(vtx[0].vout[i].nValue == masternodePaymentAmount )
+                        foundPaymentAmount = true;
+                    if(vtx[0].vout[i].scriptPubKey == payee )
+                        foundPayee = true;
+                }
+
+                if(!foundPaymentAmount || !foundPayee) {
+                    CTxDestination address1;
+                    ExtractDestination(payee, address1);
+                    CBitcoinAddress address2(address1);
+
+                    LogPrintf("CheckBlock() : Couldn't find masternode payment(%d|%"PRI64u") or payee(%d|%s). \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str());
+                    if(EnforceMasternodePayments) return state.DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
+                }
             }
-
-            for (unsigned int i = 0; i < vtx[0].vout.size(); i++) {
-                if(vtx[0].vout[i].nValue == masternodePaymentAmount )
-                    foundPaymentAmount = true;
-                if(vtx[0].vout[i].scriptPubKey == payee )
-                    foundPayee = true;
-            }
-
-            if(!foundPaymentAmount || !foundPayee) {
-                CTxDestination address1;
-                ExtractDestination(payee, address1);
-                CBitcoinAddress address2(address1);
-
-                LogPrintf("CheckBlock() : Couldn't find masternode payment(%d|%"PRI64u") or payee(%d|%s). \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str());
-                if(EnforceMasternodePayments) return state.DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
-            }
+        } else {
+            LogPrintf("CheckBlock() : Skipping masternode payment check - nHeight %d Hash %s\n", pindexBest->nHeight+1, hashPrevBlock.ToString().c_str());
         }
     }
 
