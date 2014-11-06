@@ -96,9 +96,9 @@ class CMasternodePaymentWinner
 {
 public:
     int nBlockHeight;
-    uint64 score;
     CTxIn vin;
     std::vector<unsigned char> vchSig;
+    uint64 score;
 
     CMasternodePaymentWinner() {
         nBlockHeight = 0;
@@ -106,12 +106,16 @@ public:
         vin = CTxIn();
     }
 
+    uint256 GetHash(){
+        return Hash9(BEGIN(nBlockHeight), END(vin));
+    }
+
     IMPLEMENT_SERIALIZE(
         READWRITE(nBlockHeight);
         READWRITE(score);
         READWRITE(vin);
         READWRITE(vchSig);
-     )
+    )
 };
 
 //

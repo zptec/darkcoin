@@ -56,6 +56,8 @@ bool fBenchmark = false;
 bool fTxIndex = false;
 unsigned int nCoinCacheSize = 5000;
 
+// keep track of masternode votes I've seen
+map<uint256, int> mapSeenMasternodeVotes;
 
 /** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) */
 int64 CTransaction::nMinTxFee = 100000;
@@ -4210,11 +4212,22 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 
         if(pindexBest == NULL) return false;
 
+        uint256 hash = winner.GetHash();
+        if(mapSeenMasternodeVotes.count(hash)) {
+            if(fDebug) LogPrintf("mnw - seen vote %s Height %d bestHeight %d\n", hash.ToString().c_str(), winner.nBlockHeight, pindexBest->nHeight);
+            return true;
+        }
+
         if(winner.nBlockHeight < pindexBest->nHeight - 10 || winner.nBlockHeight > pindexBest->nHeight+20){
             LogPrintf("mnw - winner out of range %s Height %d bestHeight %d\n", winner.vin.ToString().c_str(), winner.nBlockHeight, pindexBest->nHeight);
             return false;
         }
 
+        if(winner.vin.nSequence != std::numeric_limits<unsigned int>::max()){
+            LogPrintf("mnw - invalid nSequence\n");
+            pfrom->Misbehaving(100);
+            return false;
+        }
 
         LogPrintf("mnw - winning vote  %s Height %d bestHeight %d\n", winner.vin.ToString().c_str(), winner.nBlockHeight, pindexBest->nHeight);
 
@@ -4225,6 +4238,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         }
 
         if(masternodePayments.AddWinningMasternode(winner)){
+            mapSeenMasternodeVotes.insert(make_pair(hash, 1));
             masternodePayments.Relay(winner);
         }
 
