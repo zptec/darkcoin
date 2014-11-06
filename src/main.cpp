@@ -4213,19 +4213,15 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         if(pindexBest == NULL) return false;
 
         uint256 hash = winner.GetHash();
+
         if(mapSeenMasternodeVotes.count(hash)) {
-            if(fDebug) LogPrintf("mnw - seen vote %s Height %d bestHeight %d\n", hash.ToString().c_str(), winner.nBlockHeight, pindexBest->nHeight);
+            if(fDebug) LogPrintf("mnw - SKIPPED %s Height %d bestHeight %d\n", hash.ToString().c_str(), winner.nBlockHeight, pindexBest->nHeight);
             return true;
-        }
+        } 
+        mapSeenMasternodeVotes.insert(make_pair(hash, 1));
 
         if(winner.nBlockHeight < pindexBest->nHeight - 10 || winner.nBlockHeight > pindexBest->nHeight+20){
             LogPrintf("mnw - winner out of range %s Height %d bestHeight %d\n", winner.vin.ToString().c_str(), winner.nBlockHeight, pindexBest->nHeight);
-            return false;
-        }
-
-        if(winner.vin.nSequence != std::numeric_limits<unsigned int>::max()){
-            LogPrintf("mnw - invalid nSequence\n");
-            pfrom->Misbehaving(100);
             return false;
         }
 
@@ -4237,8 +4233,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             return false;
         }
 
+        
         if(masternodePayments.AddWinningMasternode(winner)){
-            mapSeenMasternodeVotes.insert(make_pair(hash, 1));
             masternodePayments.Relay(winner);
         }
 

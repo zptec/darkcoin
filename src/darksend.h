@@ -107,7 +107,10 @@ public:
     }
 
     uint256 GetHash(){
-        return Hash9(BEGIN(nBlockHeight), END(vin));
+        uint256 n2 = Hash9(BEGIN(nBlockHeight), END(nBlockHeight));
+        uint256 n3 = vin.prevout.hash > n2 ? (vin.prevout.hash - n2) : (n2 - vin.prevout.hash);
+
+        return n3;
     }
 
     IMPLEMENT_SERIALIZE(
