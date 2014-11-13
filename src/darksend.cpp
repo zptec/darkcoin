@@ -1493,6 +1493,11 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
                 }
             }
 
+            if(darkSendMasterNodes[i].nLastDsq != 0 && 
+                darkSendMasterNodes[i].nLastDsq + (int)darkSendMasterNodes.size()/5 > darkSendPool.nDsqCount){
+                return DoAutomaticDenominating();
+            }
+
             lastTimeChanged = GetTimeMillis();
             LogPrintf("DoAutomaticDenominating -- attempt %d connection to masternode %s\n", sessionTries, darkSendMasterNodes[i].addr.ToString().c_str());
             if(ConnectNode((CAddress)darkSendMasterNodes[i].addr, NULL, true)){
