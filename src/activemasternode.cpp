@@ -163,7 +163,7 @@ void CActiveMasternode::RegisterAsMasterNode(bool stop)
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
     {        
-        pnode->PushMessage("dseep", vin, vchSig, nNow, stop);
+        pnode->PushMessage("dseep", vinMasternode, vchMasterNodeSignature, masterNodeSignatureTime, stop);
     }
 }
 
