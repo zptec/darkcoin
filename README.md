@@ -7,6 +7,7 @@ Copyright (c) 2009-2013 Bitcoin Developers
 Copyright (c) 2011-2014 The Litecoin Developers
 Copyright (c) 2012-2013 The Peercoin Developers
 Copyright (c) 2014 The Darkcoin Developers
+Copyright (c) 2015 zptec
 
 What is Darkcoin?
 ----------------
